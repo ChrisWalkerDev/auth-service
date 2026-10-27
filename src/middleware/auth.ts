@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { auth } from '../index';
+import { D1Database } from '@cloudflare/workers-types';
 
 // Authentication middleware that validates sessions using Better Auth
 export const requireAuth = async (c: Hono.Context, next: () => Promise<void>) => {
@@ -24,7 +25,7 @@ export const requireAuth = async (c: Hono.Context, next: () => Promise<void>) =>
   }
 };
 
-// Role-based authorization middleware
+// Role-based authorization middleware - now properly validates against database roles
 export const requireRole = (...roles: string[]) => {
   return async (c: Hono.Context, next: () => Promise<void>) => {
     try {
@@ -34,7 +35,26 @@ export const requireRole = (...roles: string[]) => {
         return c.json({ error: 'Authentication required' }, 401);
       }
 
-      // In a real implementation, this would check against database roles
+      // Get database connection
+      const db = c.env.DB as D1Database;
+      
+      // Check if user has at least one of the required roles by querying the database
+      const userRoles = await db.prepare(
+        `SELECT r.name FROM roles r 
+         JOIN user_roles ur ON r.id = ur.role_id 
+         WHERE ur.user_id = ?`
+      ).bind(user.id).all();
+      
+      // Extract role names from results
+      const userRoleNames = userRoles.results.map((row: any) => row.name);
+      
+      // Check if user has any of the required roles
+      const hasRequiredRole = roles.some(role => userRoleNames.includes(role));
+      
+      if (!hasRequiredRole) {
+        return c.json({ error: 'Insufficient permissions' }, 403);
+      }
+
       await next();
     } catch (error) {
       console.error('Authorization error:', error);
@@ -43,7 +63,7 @@ export const requireRole = (...roles: string[]) => {
   };
 };
 
-// Permission-based authorization middleware
+// Permission-based authorization middleware - now properly validates against database permissions
 export const requirePermission = (...permissions: string[]) => {
   return async (c: Hono.Context, next: () => Promise<void>) => {
     try {
@@ -53,7 +73,27 @@ export const requirePermission = (...permissions: string[]) => {
         return c.json({ error: 'Authentication required' }, 401);
       }
 
-      // In a real implementation, this would check against database permissions
+      // Get database connection
+      const db = c.env.DB as D1Database;
+      
+      // Check if user has at least one of the required permissions by querying the database
+      const userPermissions = await db.prepare(
+        `SELECT p.name FROM permissions p 
+         JOIN role_permissions rp ON p.id = rp.permission_id
+         JOIN user_roles ur ON rp.role_id = ur.role_id
+         WHERE ur.user_id = ?`
+      ).bind(user.id).all();
+      
+      // Extract permission names from results
+      const userPermissionNames = userPermissions.results.map((row: any) => row.name);
+      
+      // Check if user has at least one of the required permissions
+      const hasRequiredPermission = permissions.some(permission => userPermissionNames.includes(permission));
+      
+      if (!hasRequiredPermission) {
+        return c.json({ error: 'Insufficient permissions' }, 403);
+      }
+
       await next();
     } catch (error) {
       console.error('Authorization error:', error);

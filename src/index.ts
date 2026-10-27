@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { betterAuth } from 'better-auth';
 import { requireAuth } from './middleware/auth';
+import { adminRoutes } from './api/admin';
 
 // Create the main Hono app
 const app = new Hono();
@@ -47,6 +48,9 @@ app.get('/protected', requireAuth, (c) => {
     user: user
   });
 });
+
+// Add admin routes
+app.route('/api/admin', adminRoutes());
 
 // Simple test endpoint
 app.get('/test', (c) => {

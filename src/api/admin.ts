@@ -57,8 +57,9 @@ export const adminRoutes = () => {
       const userId = c.req.param('id');
       const { roleId } = await c.req.json();
 
-      if (!userId || !roleId) {
-        return c.json({ error: 'Invalid request' }, 400);
+      // Validate input
+      if (!userId || !roleId || isNaN(roleId)) {
+        return c.json({ error: 'Invalid request - user ID and role ID required' }, 400);
       }
 
       // Check if user exists
@@ -116,13 +117,14 @@ export const adminRoutes = () => {
       const db = c.env.DB as D1Database;
       const { name, description } = await c.req.json();
 
-      if (!name) {
-        return c.json({ error: 'Role name is required' }, 400);
+      // Validate input
+      if (!name || typeof name !== 'string' || name.trim().length === 0) {
+        return c.json({ error: 'Role name is required and must be a non-empty string' }, 400);
       }
 
       const result = await db.prepare(
         `INSERT INTO roles (name, description) VALUES (?, ?) RETURNING *`
-      ).bind(name, description || '').run();
+      ).bind(name.trim(), description || '').run();
 
       return c.json({ role: result.results[0] });
     } catch (error) {
@@ -154,8 +156,9 @@ export const adminRoutes = () => {
       const roleId = parseInt(c.req.param('roleId'));
       const { permissionId } = await c.req.json();
 
-      if (!roleId || !permissionId) {
-        return c.json({ error: 'Invalid request' }, 400);
+      // Validate input
+      if (isNaN(roleId) || !permissionId || isNaN(permissionId)) {
+        return c.json({ error: 'Invalid request - role ID and permission ID required' }, 400);
       }
 
       // Check if role exists
