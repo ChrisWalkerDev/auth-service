@@ -1,0 +1,17 @@
+name = "auth-service"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 Database binding
+[[ d1_databases ]]
+binding = "DB" # i.e. in your Worker code: env.DB
+database_name = "auth-service-db"
+database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" # This will be updated after DB creation
+
+[triggers]
+crons = []
+
+# Environment variables (will be configured via Wrangler)
+[vars]
+PUBLIC_URL = "https://your-app.your-domain.com"
