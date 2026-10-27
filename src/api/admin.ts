@@ -3,7 +3,10 @@ import { requireAuth, requireRole } from '../middleware/auth';
 import { D1Database } from '@cloudflare/workers-types';
 
 export const adminRoutes = () => {
-  const app = new Hono();
+  const app = new Hono<{
+    Bindings: { DB: D1Database };
+    Variables: { user: unknown };
+  }>();
   
   // Admin dashboard
   app.get('/dashboard', requireAuth, requireRole('admin'), async (c) => {
