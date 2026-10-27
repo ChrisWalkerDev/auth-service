@@ -1,11 +1,12 @@
 import { Hono } from 'hono';
 import { betterAuth } from 'better-auth';
+import { requireAuth } from './middleware/auth';
 
 // Create the main Hono app
 const app = new Hono();
 
 // Configure Better Auth with Cloudflare D1
-const auth = betterAuth({
+export const auth = betterAuth({
   database: {
     provider: 'sqlite',
     // This will be set to the D1 binding in Cloudflare Workers
@@ -36,6 +37,15 @@ const auth = betterAuth({
 // Public route
 app.get('/', (c) => {
   return c.json({ message: 'Welcome to the Auth Service' });
+});
+
+// Protected route using proper auth middleware
+app.get('/protected', requireAuth, (c) => {
+  const user = c.get('user');
+  return c.json({ 
+    message: 'This is a protected route',
+    user: user
+  });
 });
 
 // Simple test endpoint
