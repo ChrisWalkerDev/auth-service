@@ -4,7 +4,6 @@
     "module": "ES2020",
     "lib": ["ES2020"],
     "types": ["@cloudflare/workers-types", "node"],
-    "typeRoots": ["./node_modules/@types"],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,

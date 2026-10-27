@@ -1,9 +1,9 @@
-import { Hono } from 'hono';
-import { auth } from '../index';
-import { D1Database } from '@cloudflare/workers-types';
+import type { MiddlewareHandler } from 'hono';
+import { auth } from '../auth';
+import type { AppEnv } from '../types';
 
 // Authentication middleware that validates sessions using Better Auth
-export const requireAuth = async (c: Hono.Context, next: () => Promise<void>) => {
+export const requireAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
   try {
     // Use Better Auth's built-in session validation
     const session = await auth.api.getSession({
@@ -27,7 +27,7 @@ export const requireAuth = async (c: Hono.Context, next: () => Promise<void>) =>
 
 // Role-based authorization middleware - now properly validates against database roles
 export const requireRole = (...roles: string[]) => {
-  return async (c: Hono.Context, next: () => Promise<void>) => {
+  const middleware: MiddlewareHandler<AppEnv> = async (c, next) => {
     try {
       const user = c.get('user');
       
@@ -36,7 +36,7 @@ export const requireRole = (...roles: string[]) => {
       }
 
       // Get database connection
-      const db = c.env.DB as D1Database;
+      const db = c.env.DB;
       
       // Check if user has at least one of the required roles by querying the database
       const userRoles = await db.prepare(
@@ -46,7 +46,7 @@ export const requireRole = (...roles: string[]) => {
       ).bind(user.id).all();
       
       // Extract role names from results
-      const userRoleNames = userRoles.results.map((row: any) => row.name);
+      const userRoleNames = userRoles.results.map((row) => row.name);
       
       // Check if user has any of the required roles
       const hasRequiredRole = roles.some(role => userRoleNames.includes(role));
@@ -61,11 +61,12 @@ export const requireRole = (...roles: string[]) => {
       return c.json({ error: 'Authorization failed' }, 403);
     }
   };
+  return middleware;
 };
 
 // Permission-based authorization middleware - now properly validates against database permissions
 export const requirePermission = (...permissions: string[]) => {
-  return async (c: Hono.Context, next: () => Promise<void>) => {
+  const middleware: MiddlewareHandler<AppEnv> = async (c, next) => {
     try {
       const user = c.get('user');
       
@@ -74,7 +75,7 @@ export const requirePermission = (...permissions: string[]) => {
       }
 
       // Get database connection
-      const db = c.env.DB as D1Database;
+      const db = c.env.DB;
       
       // Check if user has at least one of the required permissions by querying the database
       const userPermissions = await db.prepare(
@@ -85,7 +86,7 @@ export const requirePermission = (...permissions: string[]) => {
       ).bind(user.id).all();
       
       // Extract permission names from results
-      const userPermissionNames = userPermissions.results.map((row: any) => row.name);
+      const userPermissionNames = userPermissions.results.map((row) => row.name);
       
       // Check if user has at least one of the required permissions
       const hasRequiredPermission = permissions.some(permission => userPermissionNames.includes(permission));
@@ -100,4 +101,5 @@ export const requirePermission = (...permissions: string[]) => {
       return c.json({ error: 'Authorization failed' }, 403);
     }
   };
+  return middleware;
 };

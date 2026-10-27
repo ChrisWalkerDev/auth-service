@@ -1,17 +1,14 @@
 import { Hono } from 'hono';
 import { requireAuth, requireRole } from '../middleware/auth';
-import { D1Database } from '@cloudflare/workers-types';
+import type { AppEnv } from '../types';
 
 export const adminRoutes = () => {
-  const app = new Hono<{
-    Bindings: { DB: D1Database };
-    Variables: { user: unknown };
-  }>();
+  const app = new Hono<AppEnv>();
   
   // Admin dashboard
   app.get('/dashboard', requireAuth, requireRole('admin'), async (c) => {
     try {
-      const db = c.env.DB as D1Database;
+      const db = c.env.DB;
       const user = c.get('user');
 
       // Get admin stats
@@ -35,7 +32,7 @@ export const adminRoutes = () => {
   // Get all users (admin only)
   app.get('/users', requireAuth, requireRole('admin'), async (c) => {
     try {
-      const db = c.env.DB as D1Database;
+      const db = c.env.DB;
       
       const users = await db.prepare(
         `SELECT u.id, u.email, u.name, u.created_at, 
@@ -56,7 +53,7 @@ export const adminRoutes = () => {
   // Update user role
   app.put('/users/:id/role', requireAuth, requireRole('admin'), async (c) => {
     try {
-      const db = c.env.DB as D1Database;
+      const db = c.env.DB;
       const userId = c.req.param('id');
       const { roleId } = await c.req.json();
 
@@ -98,7 +95,7 @@ export const adminRoutes = () => {
   // Get roles
   app.get('/roles', requireAuth, requireRole('admin'), async (c) => {
     try {
-      const db = c.env.DB as D1Database;
+      const db = c.env.DB;
       
       const roles = await db.prepare(
         `SELECT r.*, COUNT(ur.user_id) as user_count 
@@ -117,7 +114,7 @@ export const adminRoutes = () => {
   // Create role
   app.post('/roles', requireAuth, requireRole('admin'), async (c) => {
     try {
-      const db = c.env.DB as D1Database;
+      const db = c.env.DB;
       const { name, description } = await c.req.json();
 
       // Validate input
@@ -139,7 +136,7 @@ export const adminRoutes = () => {
   // Get permissions
   app.get('/permissions', requireAuth, requireRole('admin'), async (c) => {
     try {
-      const db = c.env.DB as D1Database;
+      const db = c.env.DB;
       
       const permissions = await db.prepare(
         'SELECT * FROM permissions'
@@ -155,7 +152,7 @@ export const adminRoutes = () => {
   // Assign permission to role
   app.post('/roles/:roleId/permissions', requireAuth, requireRole('admin'), async (c) => {
     try {
-      const db = c.env.DB as D1Database;
+      const db = c.env.DB;
       const roleId = parseInt(c.req.param('roleId'));
       const { permissionId } = await c.req.json();
 

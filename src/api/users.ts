@@ -1,14 +1,14 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../middleware/auth';
-import { D1Database } from '@cloudflare/workers-types';
+import type { AppEnv } from '../types';
 
 export const userRoutes = () => {
-  const app = new Hono();
+  const app = new Hono<AppEnv>();
   
   // Get current user info
   app.get('/me', requireAuth, async (c) => {
     try {
-      const db = c.env.DB as D1Database;
+      const db = c.env.DB;
       const user = c.get('user');
 
       if (!user) {
@@ -26,7 +26,7 @@ export const userRoutes = () => {
         id: user.id,
         email: user.email,
         name: user.name,
-        roles: userRoles.results.map((r: any) => r.name),
+        roles: userRoles.results.map((r) => r.name),
         permissions: [] // Would be populated from role permissions
       };
 
@@ -40,7 +40,7 @@ export const userRoutes = () => {
   // Update current user profile
   app.put('/profile', requireAuth, async (c) => {
     try {
-      const db = c.env.DB as D1Database;
+      const db = c.env.DB;
       const user = c.get('user');
       const { name } = await c.req.json();
 
@@ -66,7 +66,7 @@ export const userRoutes = () => {
   // Get specific user info (if admin)
   app.get('/:id', requireAuth, async (c) => {
     try {
-      const db = c.env.DB as D1Database;
+      const db = c.env.DB;
       const user = c.get('user');
       const userId = c.req.param('id');
 
