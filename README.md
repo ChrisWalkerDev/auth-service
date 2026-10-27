@@ -7,7 +7,7 @@ Authentication and role-based authorization on Cloudflare: one Worker (Hono), on
 | Item | Status |
 |---|---|
 | `npx tsc --noEmit` | passes |
-| `npm test` (17 tests, real Workers runtime + D1 via `@cloudflare/vitest-pool-workers`) | passes |
+| `npm test` (21 tests, real Workers runtime + D1 via `@cloudflare/vitest-plugin`) | passes |
 | `npm run build` (`wrangler deploy --dry-run`) | passes (~422 KiB gzip) |
 | `wrangler dev` manual run: sign-up, session cookie, `/api/me`, `/api/admin/users`, bootstrap admin | works locally |
 | Remote deploy to Cloudflare | **not tested** (needs your account) |
@@ -26,6 +26,8 @@ The HTML pages (`/`, `/login`, `/register`, `/dashboard`, `/admin`) are minimal 
 | `PUT /api/admin/users/:id/role` body `{"role":"admin"\|"member"}` | permission `roles:manage` |
 | `DELETE /api/admin/users/:id` | permission `users:manage` |
 | `/api/auth/*` | Better Auth (`sign-up/email`, `sign-in/email`, `sign-out`, `get-session`, ...) |
+| `GET /api/auth/token` | signed-in; returns a 15-minute EdDSA JWT for use by other services |
+| `GET /api/auth/jwks` | public; public keys for verifying those JWTs |
 
 There are no content routes; the app only manages users and roles.
 
@@ -100,8 +102,9 @@ Set `DISABLE_SIGNUP = "true"` for invite-only mode (then create users some other
 - CSRF: Better Auth validates Origin for its endpoints; our own state-changing `/api/*` routes require `Origin` to equal `PUBLIC_URL`.
 - Headers: restrictive CSP, nosniff, frame denial, HSTS, no-referrer, `Cache-Control: no-store` on responses.
 - Passwords are hashed by Better Auth (minimum length 12).
+- JWTs: the Better Auth `jwt` plugin issues short-lived (15 min) EdDSA tokens (`iss`/`aud` = `PUBLIC_URL`, `sub` = user id) at `GET /api/auth/token`, and publishes public keys at `/api/auth/jwks` (table `jwks`, in `0001_init.sql`). They are meant for other services to verify. This Worker does not accept them as authentication (cookie only), and they cannot be revoked before expiry. Verify with e.g. `jose`: `jwtVerify(token, createRemoteJWKSet(new URL(PUBLIC_URL + '/api/auth/jwks')), { issuer, audience })`.
 - Queries use prepared statements with bound parameters; input validated with zod.
-- Schema: `migrations/0001_init.sql` (Better Auth `user`, `session`, `account`, `verification`, `rateLimit` plus RBAC tables with foreign keys and seed data).
+- Schema: `migrations/0001_init.sql` (Better Auth `user`, `session`, `account`, `verification`, `rateLimit`, `jwks` plus RBAC tables with foreign keys and seed data).
 
 ## Rate limiting
 

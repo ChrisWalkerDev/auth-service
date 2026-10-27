@@ -1,4 +1,5 @@
 import { betterAuth } from 'better-auth';
+import { jwt } from 'better-auth/plugins';
 
 export interface AuthEnv {
   DB: D1Database;
@@ -19,6 +20,18 @@ export const createAuth = (env: AuthEnv) => {
     baseURL: env.PUBLIC_URL,
     secret: env.BETTER_AUTH_SECRET,
     trustedOrigins: [env.PUBLIC_URL],
+    plugins: [
+      // Short-lived JWTs for third-party services; this Worker itself still authenticates via cookie.
+      jwt({
+        jwks: { keyPairConfig: { alg: 'EdDSA', crv: 'Ed25519' } },
+        jwt: {
+          issuer: env.PUBLIC_URL,
+          audience: env.PUBLIC_URL,
+          expirationTime: '15m',
+          definePayload: ({ user }) => ({ email: user.email, name: user.name }),
+        },
+      }),
+    ],
     emailAndPassword: {
       enabled: true,
       disableSignUp: env.DISABLE_SIGNUP === 'true',

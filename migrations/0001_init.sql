@@ -95,3 +95,14 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
   ('admin', 'users:read'),
   ('admin', 'users:manage'),
   ('admin', 'roles:manage');
+
+-- JWT plugin signing keys
+CREATE TABLE "jwks" (
+  "id" TEXT NOT NULL PRIMARY KEY,
+  "publicKey" TEXT NOT NULL,
+  "privateKey" TEXT NOT NULL,
+  "createdAt" DATE NOT NULL,
+  "expiresAt" DATE,
+  "alg" TEXT,
+  "crv" TEXT
+);

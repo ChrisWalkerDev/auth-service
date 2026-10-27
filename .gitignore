@@ -11,6 +11,11 @@
 .dev.vars
 .dev.vars.*
 
+# Local API testing artifacts (contain credentials/session cookies)
+body.json
+role.json
+jar.txt
+
 # System
 .DS_Store
 Thumbs.db
