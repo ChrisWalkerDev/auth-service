@@ -1,169 +1,119 @@
-# Secure Authentication and Authorization System on Cloudflare
+# auth-service
 
-A complete, secure authentication and authorization system built for Cloudflare Workers with D1 database.
+Authentication and role-based authorization on Cloudflare: one Worker (Hono), one D1 database, [Better Auth](https://better-auth.com) for email/password accounts and sessions.
 
-## Features
+## What is verified
 
-- **Authentication**: User registration, login, logout with secure session management
-- **Authorization**: Role-based access control (RBAC) with permissions
-- **Secure Session Handling**: HttpOnly cookies with Secure and SameSite settings
-- **Database Integration**: Uses Cloudflare D1 with proper migrations
-- **API Protection**: Server-side authorization enforcement
+| Item | Status |
+|---|---|
+| `npx tsc --noEmit` | passes |
+| `npm test` (17 tests, real Workers runtime + D1 via `@cloudflare/vitest-pool-workers`) | passes |
+| `npm run build` (`wrangler deploy --dry-run`) | passes (~422 KiB gzip) |
+| `wrangler dev` manual run: sign-up, session cookie, `/api/me`, `/api/admin/users`, bootstrap admin | works locally |
+| Remote deploy to Cloudflare | **not tested** (needs your account) |
 
-## Technology Stack
-
-- **Cloudflare Workers** - Application runtime
-- **Cloudflare D1** - SQL database
-- **Better Auth** - Authentication framework
-- **Hono** - Web framework for routing
-- **TypeScript** - Type safety
-- **Wrangler** - Development and deployment tooling
-
-## Architecture
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Client Apps   │    │ Cloudflare      │    │ Cloudflare D1   │
-│                 │    │ Workers         │    │ Database        │
-│  Browser        │───▶│  (Node.js)      │───▶│                 │
-│  Mobile App     │    │  Auth Service   │    │  - Users        │
-│                 │    │                 │    │  - Sessions     │
-│                 │    │                 │    │  - Roles        │
-└─────────────────┘    │  - Content      │    │  - Permissions  │
-                       │  - Access Rules │    └─────────────────┘
-                       └─────────────────┘
-```
-
-## Database Schema
-
-### Core Tables
-
-1. **users** - User accounts (managed by Better Auth)
-2. **sessions** - Active sessions (managed by Better Auth) 
-3. **accounts** - Social account connections (managed by Better Auth)
-4. **roles** - User roles (admin, member, etc.)
-5. **user_roles** - Many-to-many relationship between users and roles
-6. **permissions** - Available permissions (read, write, manage, etc.)
-7. **role_permissions** - Permissions assigned to roles
-8. **content** - Content items with ownership
-9. **content_access_rules** - Access control rules for content
+The HTML pages (`/`, `/login`, `/register`, `/dashboard`, `/admin`) are minimal server-checked shells. There is no login form UI yet; use the API.
 
 ## Routes
 
-### Public Routes
-- `/` - Landing page
+| Route | Access |
+|---|---|
+| `GET /` , `/login`, `/register` | public (`/register` is 404 when sign-up is disabled) |
+| `GET /dashboard` | signed-in users |
+| `GET /admin` | role `admin` |
+| `GET /api/me` | signed-in; returns id, name, email, role, permissions |
+| `GET /api/admin/users` | permission `users:read` |
+| `PUT /api/admin/users/:id/role` body `{"role":"admin"\|"member"}` | permission `roles:manage` |
+| `DELETE /api/admin/users/:id` | permission `users:manage` |
+| `/api/auth/*` | Better Auth (`sign-up/email`, `sign-in/email`, `sign-out`, `get-session`, ...) |
 
-### Authentication Routes
-- `/api/auth/login` - Login endpoint
-- `/api/auth/register` - Registration endpoint  
-- `/api/auth/logout` - Logout endpoint
+There are no content routes; the app only manages users and roles.
 
-### Protected Routes
-- `/dashboard` - User dashboard (authenticated)
-- `/api/me` - Current user info
-- `/api/content/list` - List accessible content
-- `/api/content/:id` - Access specific content
-- `/api/users/me` - Current user profile
-- `/api/users/:id` - Get user info
+Status codes: 401 not authenticated, 403 authenticated but not permitted, 400 invalid input, 404 unknown user.
 
-### Admin Routes
-- `/api/admin/dashboard` - Admin dashboard (admin only)
-- `/api/admin/users` - Manage users (admin only)
-- `/api/admin/users/:id/role` - Assign roles (admin only)
-- `/api/admin/roles` - Manage roles (admin only)
-- `/api/admin/permissions` - Manage permissions (admin only)
+## Local development
 
-## Security Features
-
-1. **Secure Sessions**: HttpOnly cookies with Secure and SameSite attributes
-2. **CSRF Protection**: Session validation on state-changing operations
-3. **Input Validation**: All inputs are validated and sanitized
-4. **Authorization Enforcement**: Server-side checks for every route
-5. **Role-Based Access Control**: Fine-grained permissions
-6. **Content Isolation**: Users can only access content they own or have permission to view
-7. **Database Security**: Parameterized queries, proper indexing
-
-## Deployment Instructions
-
-### Prerequisites
-
-1. Install Wrangler: `npm install -g wrangler`
-2. Create a Cloudflare account and get your API token
-
-### Setup Steps
-
-1. **Create D1 Database**:
-   ```bash
-   wrangler d1 create auth-service-db
-   ```
-
-2. **Get Database ID**:
-   ```bash
-   wrangler d1 list
-   ```
-
-3. **Update Wrangler Configuration**:
-   Update the `database_id` in `wrangler.toml` with your actual database ID.
-
-4. **Apply Migrations**:
-   ```bash
-   wrangler d1 execute auth-service-db --file ./src/database/migrations/0001_initial_schema.ts
-   ```
-
-5. **Set Secrets**:
-   ```bash
-   wrangler secret put JWT_SECRET
-   wrangler secret put SESSION_SECRET
-   ```
-
-6. **Deploy**:
-   ```bash
-   npm run deploy
-   ```
-
-## Development
-
-### Local Development
-
-```bash
-npm run dev
+```powershell
+npm install
+# secret for local dev (git-ignored)
+Set-Content .dev.vars "BETTER_AUTH_SECRET=$([Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Max 256 }) -as [byte[]]))"
+npm run db:migrate:local
+npm run dev        # http://localhost:8787
 ```
 
-### Running Tests
+`wrangler.toml` ships with a placeholder `database_id`; local mode ignores it.
 
-```bash
+Try it:
+
+```powershell
+'{"email":"me@example.com","password":"a long passphrase","name":"Me"}' | Set-Content body.json
+curl.exe -i -c jar.txt -X POST http://localhost:8787/api/auth/sign-up/email -H "Origin: http://localhost:8787" -H "Content-Type: application/json" --data-binary "@body.json"
+curl.exe -b jar.txt http://localhost:8787/api/me
+```
+
+## Creating the first admin
+
+Option A (recommended, any environment): register normally, then promote with SQL.
+
+```powershell
+# local
+npx wrangler d1 execute auth-service-db --local --command "UPDATE user_roles SET role_id='admin' WHERE user_id=(SELECT id FROM user WHERE email='you@example.com')"
+# remote
+npx wrangler d1 execute auth-service-db --remote --command "UPDATE user_roles SET role_id='admin' WHERE user_id=(SELECT id FROM user WHERE email='you@example.com')"
+```
+
+Option B: set `BOOTSTRAP_ADMIN_EMAIL` (var in `wrangler.toml`, or in `.dev.vars` locally). The first registration with that email becomes admin, only while no admin exists. Because email is not verified, register that account immediately and then clear the variable.
+
+Afterwards, admins manage roles through `PUT /api/admin/users/:id/role`. Nobody can change their own role.
+
+## Tests
+
+```powershell
 npm test
+npm run typecheck
+npm run build
 ```
 
-## Free Tier Limits
+Tests cover: registration, login, logout, weak passwords, cookie flags, 401 without credentials, forged bearer/cookie tokens, client-supplied identity headers, expired and revoked sessions, member vs admin access, privilege escalation (self and others), mass assignment of `role` at sign-up, bootstrap admin, validation (bad role, unknown user), CSRF (foreign/missing Origin), security headers.
 
-This implementation is designed to work within Cloudflare's free tier:
+## Deploy to Cloudflare
 
-- **Compute**: 100,000 requests/day
-- **D1**: 3GB storage, 100,000 read/write operations/day  
-- **Workers**: 100,000 requests/day
-- **Bandwidth**: 10TB/month
+```powershell
+npx wrangler login
+npx wrangler d1 create auth-service-db
+# copy the printed database_id into wrangler.toml (replace REPLACE_WITH_YOUR_D1_DATABASE_ID)
+# set PUBLIC_URL in wrangler.toml to your https origin (e.g. https://auth-service.<subdomain>.workers.dev)
+npx wrangler secret put BETTER_AUTH_SECRET      # paste a random 32+ char value, e.g. `openssl rand -base64 32`
+npm run db:migrate:remote
+npm run deploy
+```
 
-## Bootstrap Admin User
+Set `DISABLE_SIGNUP = "true"` for invite-only mode (then create users some other way, e.g. temporarily re-enable, or insert via Better Auth server APIs).
 
-To create the initial administrator:
+## Architecture and security
 
-1. Deploy the application
-2. Run a one-time script to create an admin user:
-   ```sql
-   INSERT INTO users (id, email, name) VALUES ('admin-user-id', 'admin@example.com', 'Administrator');
-   INSERT INTO roles (name, description) VALUES ('admin', 'Administrator with full access');
-   INSERT INTO user_roles (user_id, role_id) VALUES ('admin-user-id', 1);
-   ```
+- One Worker. `src/auth.ts` builds the single Better Auth configuration from `env` per request (bindings exist only at request time) on the D1 binding. No second auth instance exists anywhere.
+- `src/middleware/auth.ts`: `requireAuth` calls `auth.api.getSession({ headers })`; any missing, invalid, expired, revoked session or any thrown error yields 401. Transport is Better Auth's signed session cookie only; the Bearer plugin is not enabled, so `Authorization` headers are ignored.
+- Roles and permissions are read from D1 (`user_roles`, `role_permissions`) using the verified session user id; nothing client-supplied is trusted. One role per user (`user_roles.user_id` is the primary key). New users get `member`.
+- Seeded permissions: `users:read`, `users:manage`, `roles:manage` (admin has all; member has none).
+- Cookies: HttpOnly, SameSite=Lax, Secure when `PUBLIC_URL` is https. Sessions last 7 days.
+- CSRF: Better Auth validates Origin for its endpoints; our own state-changing `/api/*` routes require `Origin` to equal `PUBLIC_URL`.
+- Headers: restrictive CSP, nosniff, frame denial, HSTS, no-referrer, `Cache-Control: no-store` on responses.
+- Passwords are hashed by Better Auth (minimum length 12).
+- Queries use prepared statements with bound parameters; input validated with zod.
+- Schema: `migrations/0001_init.sql` (Better Auth `user`, `session`, `account`, `verification`, `rateLimit` plus RBAC tables with foreign keys and seed data).
 
-## Configuration
+## Rate limiting
 
-### Environment Variables (in wrangler.toml)
+Better Auth's limiter is enabled and stored in D1: 5 requests/min per IP for sign-in and sign-up, 60/min otherwise, keyed on `CF-Connecting-IP`. Limitations: it is per-IP only (no per-account lockout), D1 writes make it consume free-tier write quota, and it is best-effort under concurrency. Add Cloudflare WAF rate-limiting rules on `/api/auth/*` for stronger protection (availability depends on your plan).
 
-- `PUBLIC_URL` - Public URL of your application
-- `JWT_SECRET` - Secret for JWT tokens (set via wrangler secret)
-- `SESSION_SECRET` - Secret for session encryption (set via wrangler secret)
+## Known gaps
 
-## License
+- No login/register/admin UI forms yet.
+- No email verification or password reset (needs an email provider).
+- Role assignment removes no existing sessions; a demoted user keeps their session but loses permissions immediately because permissions are checked per request.
+- Last-admin protection: you cannot change/delete yourself, so an admin cannot remove the last admin by self-action; another admin could still demote you.
 
-MIT License
+## Free-tier notes (check current Cloudflare pricing)
+
+Workers Free: 100k requests/day, 10 ms CPU per request (password hashing is the main CPU cost; if sign-ups hit CPU limits, a paid plan may be needed). D1 Free: 5M rows read/day, 100k rows written/day, 5 GB total. Bundle limit 3 MiB gzip on Free (current ~422 KiB). Nothing here uses paid-only features.

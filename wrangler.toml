@@ -1,17 +1,24 @@
 name = "auth-service"
 main = "src/index.ts"
-compatibility_date = "2024-01-01"
+compatibility_date = "2026-01-01"
 compatibility_flags = ["nodejs_compat"]
 
-# D1 Database binding
-[[ d1_databases ]]
-binding = "DB" # i.e. in your Worker code: env.DB
+[[d1_databases]]
+binding = "DB"
 database_name = "auth-service-db"
-database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" # This will be updated after DB creation
+# Replace with the id printed by `npx wrangler d1 create auth-service-db`
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+migrations_dir = "migrations"
 
-[triggers]
-crons = []
-
-# Environment variables (will be configured via Wrangler)
 [vars]
-PUBLIC_URL = "https://your-app.your-domain.com"
+# Public origin of the deployed app (no trailing slash). Used as the Better Auth baseURL.
+PUBLIC_URL = "http://localhost:8787"
+# Set to "true" to make the app invite-only (no public sign-up).
+DISABLE_SIGNUP = "false"
+# Optional: the first registration with this email becomes admin if no admin exists yet.
+# Leave empty and use the SQL bootstrap instead if you prefer.
+BOOTSTRAP_ADMIN_EMAIL = ""
+
+# Secrets (never put these here):
+#   BETTER_AUTH_SECRET -> `npx wrangler secret put BETTER_AUTH_SECRET`
+#   local dev           -> .dev.vars (git-ignored)
