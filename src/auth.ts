@@ -7,6 +7,10 @@ export interface AuthEnv {
   PUBLIC_URL: string;
   DISABLE_SIGNUP?: string;
   BOOTSTRAP_ADMIN_EMAIL?: string;
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  GITHUB_CLIENT_ID?: string;
+  GITHUB_CLIENT_SECRET?: string;
 }
 
 // Better Auth is stateless apart from D1, so a lightweight instance is created per request
@@ -20,6 +24,30 @@ export const createAuth = (env: AuthEnv) => {
     baseURL: env.PUBLIC_URL,
     secret: env.BETTER_AUTH_SECRET,
     trustedOrigins: [env.PUBLIC_URL],
+    // No automatic linking: email/password emails are unverified, so linking by email could let an
+    // attacker who pre-registered a victim's address keep access after the victim signs in with a provider.
+    account: { accountLinking: { enabled: false } },
+    // Each provider is only enabled when both of its secrets are configured.
+    socialProviders: {
+      ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
+        ? {
+            google: {
+              clientId: env.GOOGLE_CLIENT_ID,
+              clientSecret: env.GOOGLE_CLIENT_SECRET,
+              disableSignUp: env.DISABLE_SIGNUP === 'true',
+            },
+          }
+        : {}),
+      ...(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET
+        ? {
+            github: {
+              clientId: env.GITHUB_CLIENT_ID,
+              clientSecret: env.GITHUB_CLIENT_SECRET,
+              disableSignUp: env.DISABLE_SIGNUP === 'true',
+            },
+          }
+        : {}),
+    },
     plugins: [
       // Short-lived JWTs for third-party services; this Worker itself still authenticates via cookie.
       jwt({

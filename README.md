@@ -7,7 +7,7 @@ Authentication and role-based authorization on Cloudflare: one Worker (Hono), on
 | Item | Status |
 |---|---|
 | `npx tsc --noEmit` | passes |
-| `npm test` (21 tests, real Workers runtime + D1 via `@cloudflare/vitest-plugin`) | passes |
+| `npm test` (32 tests, real Workers runtime + D1 via `@cloudflare/vitest-plugin`) | passes |
 | `npm run build` (`wrangler deploy --dry-run`) | passes (~422 KiB gzip) |
 | `wrangler dev` manual run: sign-up, session cookie, `/api/me`, `/api/admin/users`, bootstrap admin | works locally |
 | Remote deploy to Cloudflare | **not tested** (needs your account) |
@@ -105,6 +105,22 @@ Set `DISABLE_SIGNUP = "true"` for invite-only mode (then create users some other
 - JWTs: the Better Auth `jwt` plugin issues short-lived (15 min) EdDSA tokens (`iss`/`aud` = `PUBLIC_URL`, `sub` = user id) at `GET /api/auth/token`, and publishes public keys at `/api/auth/jwks` (table `jwks`, in `0001_init.sql`). They are meant for other services to verify. This Worker does not accept them as authentication (cookie only), and they cannot be revoked before expiry. Verify with e.g. `jose`: `jwtVerify(token, createRemoteJWKSet(new URL(PUBLIC_URL + '/api/auth/jwks')), { issuer, audience })`.
 - Queries use prepared statements with bound parameters; input validated with zod.
 - Schema: `migrations/0001_init.sql` (Better Auth `user`, `session`, `account`, `verification`, `rateLimit`, `jwks` plus RBAC tables with foreign keys and seed data).
+
+## Social sign-in: Google and GitHub (optional)
+
+Each provider is enabled only when both of its secrets are set; otherwise its endpoints return an error. Providers are independent.
+
+| Provider | Secrets | Where to create credentials | Callback URL to register |
+|---|---|---|---|
+| Google | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google Cloud Console > APIs & Services > Credentials > OAuth client (Web application) | `<PUBLIC_URL>/api/auth/callback/google` |
+| GitHub | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | GitHub > Settings > Developer settings > OAuth Apps > New OAuth App (use "Authorization callback URL") | `<PUBLIC_URL>/api/auth/callback/github` |
+
+Local callback example: `http://localhost:8787/api/auth/callback/github`. GitHub OAuth Apps allow one callback URL, so register separate apps for local and production.
+
+1. Local: add the secrets to `.dev.vars`. Deployed: `npx wrangler secret put GITHUB_CLIENT_ID` (and the other three as needed).
+2. Start the flow from the browser: `POST /api/auth/sign-in/social` with `{"provider":"google"|"github","callbackURL":"/dashboard"}`; the response contains the provider URL (`url`) to redirect the user to. The provider then returns to `/api/auth/callback/<provider>`, which creates the session cookie.
+
+Behaviour: new social users get the `member` role (or `admin` if their email matches `BOOTSTRAP_ADMIN_EMAIL` and no admin exists). `DISABLE_SIGNUP=true` also blocks new social sign-ups; existing users can still sign in. Automatic account linking is disabled, so a social sign-in whose email already belongs to another account is refused rather than merged (emails are not verified on email/password accounts, and merging could hand the account to whoever pre-registered it). Tests cover the authorization URL, forged state, foreign origins and off-site redirects for both providers; the full round-trip needs real credentials and is not tested.
 
 ## Rate limiting
 

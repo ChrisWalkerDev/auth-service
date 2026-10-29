@@ -18,11 +18,11 @@ export default defineConfig(async () => {
       }),
     ],
     test: {
-      // Better Auth surfaces expected 4xx APIErrors as rejected promises inside workerd even though
-      // the HTTP response is correct; ignore only those, never other unhandled errors.
+      // Better Auth surfaces expected 3xx redirects and 4xx APIErrors as rejected promises inside workerd even
+      // though the HTTP response is correct; ignore only those, never other unhandled errors.
       onUnhandledError: (error) => {
         const status = (error as { statusCode?: number }).statusCode;
-        if (error.name === 'APIError' && typeof status === 'number' && status >= 400 && status < 500) {
+        if (error.name === 'APIError' && typeof status === 'number' && status >= 300 && status < 500) {
           return false;
         }
       },
