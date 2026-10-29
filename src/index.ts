@@ -31,7 +31,7 @@ app.use('/api/*', async (c, next) => {
   await next();
 });
 
-app.on(['GET', 'POST'], '/api/auth/*', (c) => createAuth(c.env).handler(c.req.raw));
+app.on(['GET', 'POST', 'PUT', 'DELETE'], '/api/auth/*', (c) => createAuth(c.env).handler(c.req.raw));
 
 app.get('/api/me', requireAuth, async (c) => {
   const user = c.get('user');
@@ -51,13 +51,69 @@ const page = (title: string, body: string) =>
   `<meta name="viewport" content="width=device-width,initial-scale=1"></head><body>${body}</body></html>`;
 
 app.get('/', (c) =>
-  c.html(page('Auth Service', '<h1>Auth Service</h1><a href="/login">Log in</a> · <a href="/register">Register</a>')),
-);
-app.get('/login', (c) => c.html(page('Log in', '<h1>Log in</h1><p>POST /api/auth/sign-in/email</p>')));
+  c.html(page('Auth Service', '<h1>Auth Service</h1><a href="/login">Log in</a>'))),
+  
+app.get('/login', (c) => {
+  // Determine available social providers from environment
+  const availableProviders = [];
+  if (c.env.GOOGLE_CLIENT_ID && c.env.GOOGLE_CLIENT_SECRET) {
+    availableProviders.push('google');
+  }
+  if (c.env.GITHUB_CLIENT_ID && c.env.GITHUB_CLIENT_SECRET) {
+    availableProviders.push('github');
+  }
+
+  // Generate social login buttons
+  const loginContent = availableProviders.length > 0 
+    ? `
+    <h1>Log in</h1>
+    <div class="social-login">
+      <h2>Sign in with Social Provider</h2>
+      ${availableProviders.map(provider => {
+        switch(provider) {
+          case 'google':
+            return '<a href="/api/auth/sign-in/google" class="social-button google">Continue with Google</a>';
+          case 'github':
+            return '<a href="/api/auth/sign-in/github" class="social-button github">Continue with GitHub</a>';
+          default:
+            return '';
+        }
+      }).filter(Boolean).join('\n  ')}
+    </div>
+    <style>
+      .social-button {
+        display: inline-block;
+        padding: 10px 20px;
+        margin: 10px 0;
+        border-radius: 4px;
+        text-decoration: none;
+        color: white;
+        font-weight: bold;
+        text-align: center;
+        width: 250px;
+        box-sizing: border-box;
+      }
+      .social-button.google {
+        background-color: #DB4437;
+      }
+      .social-button.github {
+        background-color: #333;
+      }
+      .social-login {
+        text-align: center;
+        margin-top: 20px;
+      }
+    </style>
+  `
+    : '<h1>Log in</h1><p>No social providers configured.</p>';
+
+  return c.html(page('Log in', loginContent));
+}),
+
 app.get('/register', (c) =>
   c.env.DISABLE_SIGNUP === 'true'
     ? c.notFound()
-    : c.html(page('Register', '<h1>Register</h1><p>POST /api/auth/sign-up/email</p>')),
+    : c.html(page('Register', '<h1>Register</h1><p>POST /api/auth/sign-up/oauth</p>')),
 );
 app.get('/dashboard', requireAuth, (c) =>
   c.html(page('Dashboard', `<h1>Dashboard</h1><p>Signed in as ${escapeHtml(c.get('user').email)}</p>`)),

@@ -61,7 +61,7 @@ export const createAuth = (env: AuthEnv) => {
       }),
     ],
     emailAndPassword: {
-      enabled: true,
+      enabled: false,
       disableSignUp: env.DISABLE_SIGNUP === 'true',
       minPasswordLength: 12,
       maxPasswordLength: 128,
