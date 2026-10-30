@@ -33,3 +33,6 @@ BOOTSTRAP_ADMIN_EMAIL = "chriswalkerdev@gmail.com"
 
 [limits]
 cpu_ms = 1000
+
+[secrets]
+required = ["BETTER_AUTH_SECRET", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"]
