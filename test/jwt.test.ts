@@ -1,11 +1,8 @@
-import { env } from 'cloudflare:workers';
 import { describe, it, expect } from 'vitest';
 import { createLocalJWKSet, jwtVerify, SignJWT, generateKeyPair } from 'jose';
 import app from '../src/index';
-import type { AuthEnv } from '../src/auth';
+import { createUserSession, e, ORIGIN } from './helpers';
 
-const e = env as unknown as AuthEnv;
-const ORIGIN = 'http://localhost:8787';
 let n = 0;
 const call = (path: string, init: RequestInit & { cookie?: string } = {}) => {
   const headers = new Headers(init.headers);
@@ -16,14 +13,11 @@ const call = (path: string, init: RequestInit & { cookie?: string } = {}) => {
   return app.request(path, { ...init, headers }, e);
 };
 
-const signUp = async () => {
-  const res = await call('/api/auth/sign-up/email', {
-    method: 'POST',
-    body: JSON.stringify({ email: `jwt${++n}@example.com`, password: 'correct horse battery staple', name: 'J' }),
-  });
+const issueToken = async () => {
+  const u = await createUserSession();
+  const res = await call('/api/auth/token', { cookie: u.cookie });
   expect(res.status).toBe(200);
-  const cookie = res.headers.getSetCookie().map((c) => c.split(';')[0]).join('; ');
-  return { cookie, id: ((await res.json()) as { user: { id: string } }).user.id };
+  return { u, token: ((await res.json()) as { token: string }).token };
 };
 
 describe('JWT plugin', () => {
@@ -42,13 +36,8 @@ describe('JWT plugin', () => {
   });
 
   it('issues a verifiable, short-lived JWT for the session user', async () => {
-    const u = await signUp();
-    const res = await call('/api/auth/token', { cookie: u.cookie });
-    expect(res.status).toBe(200);
-    const { token } = (await res.json()) as { token: string };
-
+    const { u, token } = await issueToken();
     const jwks = await call('/api/auth/jwks');
-    expect(jwks.status).toBe(200);
     const set = createLocalJWKSet(await jwks.json());
     const { payload } = await jwtVerify(token, set, { issuer: ORIGIN, audience: ORIGIN });
     expect(payload.sub).toBe(u.id);
@@ -57,8 +46,7 @@ describe('JWT plugin', () => {
   });
 
   it('rejects JWTs signed with a different key', async () => {
-    const u = await signUp();
-    const { token } = (await (await call('/api/auth/token', { cookie: u.cookie })).json()) as { token: string };
+    const { u } = await issueToken();
     const set = createLocalJWKSet(await (await call('/api/auth/jwks')).json());
     const { privateKey } = await generateKeyPair('EdDSA');
     const forged = await new SignJWT({ sub: u.id })
@@ -68,13 +56,11 @@ describe('JWT plugin', () => {
       .setExpirationTime('15m')
       .sign(privateKey);
     await expect(jwtVerify(forged, set, { issuer: ORIGIN, audience: ORIGIN })).rejects.toThrow();
-    expect(token).toBeTruthy();
   });
 
   it('a JWT is not accepted as authentication by this Worker', async () => {
-    const u = await signUp();
-    const { token } = (await (await call('/api/auth/token', { cookie: u.cookie })).json()) as { token: string };
-    const res = await call('/api/me', { headers: { Authorization: `Bearer ${token}` } });
+    const { token } = await issueToken();
+    const res = await call('/api/me', { headers: { Authorization: 'Bearer ' + token } });
     expect(res.status).toBe(401);
   });
 });

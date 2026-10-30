@@ -1,9 +1,9 @@
-import { env } from 'cloudflare:workers';
 import { describe, it, expect } from 'vitest';
 import app from '../src/index';
 import type { AuthEnv } from '../src/auth';
+import { unconfigured } from './helpers';
 
-const base = env as unknown as AuthEnv;
+const base: AuthEnv = unconfigured;
 const configured: AuthEnv = {
   ...base,
   GOOGLE_CLIENT_ID: 'test-google-id',
@@ -62,6 +62,16 @@ describe.each(providers)('$name sign-in', ({ name, host, id, secret }) => {
   it('rejects an off-site callbackURL (open redirect)', async () => {
     const res = await start(configured, name, 'http://localhost:8787', 'https://evil.example/steal');
     expect(res.status).toBe(403);
+  });
+
+  it('accepts a callbackURL on a configured trusted origin, including wildcard subdomains', async () => {
+    const multi: AuthEnv = { ...configured, TRUSTED_ORIGINS: 'https://chriswalker.dev,https://*.chriswalker.dev' };
+    for (const url of ['https://chriswalker.dev/yay/test', 'https://blog.chriswalker.dev/x?a=1']) {
+      expect((await start(multi, name, 'http://localhost:8787', url)).status).toBe(200);
+    }
+    for (const url of ['https://chriswalker.dev.evil.example/', 'https://evilchriswalker.dev/']) {
+      expect((await start(multi, name, 'http://localhost:8787', url)).status).toBe(403);
+    }
   });
 
   it('rejects a callback with a forged state and creates no session', async () => {
