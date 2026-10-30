@@ -20,6 +20,7 @@ globs = ["**/*.html", "**/*.css"]
 fallthrough = true
 
 [vars]
+LOGO_URL='https://chriswalker.dev/favicon.svg'
 PUBLIC_URL = "https://auth.chriswalker.dev"
 # Sites users may be sent back to after login (via /?redirect=...).
 TRUSTED_ORIGINS = "https://chriswalker.dev,https://*.chriswalker.dev"
