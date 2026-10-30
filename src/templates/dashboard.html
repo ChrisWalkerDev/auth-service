@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Dashboard</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+</head>
+<body>
+    <h1>Dashboard</h1>
+    <p>Signed in as {{EMAIL}}</p>
+    <h2>Role</h2>
+    <p>{{ROLE}}</p>
+    <h2>Permissions</h2>
+    {{{PERMISSIONS}}}
+    <button type="button" id="logout">Log out</button>
+    <p id="logout-error" hidden>Log out failed. Please try again.</p>
+    <script src="/js/dashboard.js"></script>
+</body>
+</html>

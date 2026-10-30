@@ -1,10 +1,24 @@
+import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vitest/config';
 import { cloudflareTest, readD1Migrations } from '@cloudflare/vitest-plugin';
+
+// Mirrors esbuild's `with { type: 'text' }` handling so template scripts load as strings under Vite.
+const textScripts = {
+  name: 'template-scripts-as-text',
+  enforce: 'pre' as const,
+  load(id: string) {
+    const file = id.split('?')[0].replace(/\\/g, '/');
+    if (file.includes('/src/templates/js/') && file.endsWith('.js')) {
+      return `export default ${JSON.stringify(readFileSync(file, 'utf8'))};`;
+    }
+  },
+};
 
 export default defineConfig(async () => {
   const migrations = await readD1Migrations('./migrations');
   return {
     plugins: [
+      textScripts,
       cloudflareTest({
         wrangler: { configPath: './wrangler.toml' },
         miniflare: {

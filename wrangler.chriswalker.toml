@@ -1,0 +1,32 @@
+name = "auth-chriswalker"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Serve the Worker on its own subdomain (the zone must be on this Cloudflare account).
+routes = [{ pattern = "auth.chriswalker.dev", custom_domain = true }]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "auth-chriswalker-db"
+# Replace with the id printed by `npx wrangler d1 create auth-chriswalker-db`
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+# Bundle HTML templates and CSS (src/templates) into the Worker as text modules.
+[[rules]]
+type = "Text"
+globs = ["**/*.html", "**/*.css"]
+fallthrough = true
+
+[vars]
+PUBLIC_URL = "https://auth.chriswalker.dev"
+# Sites users may be sent back to after login (via /?redirect=...).
+TRUSTED_ORIGINS = "https://chriswalker.dev,https://*.chriswalker.dev"
+DISABLE_SIGNUP = "false"
+BOOTSTRAP_ADMIN_EMAIL = ""
+
+# Secrets (set per deployment, never put them here):
+#   npx wrangler secret put BETTER_AUTH_SECRET -c wrangler.chriswalker.toml
+#   npx wrangler secret put GOOGLE_CLIENT_ID -c wrangler.chriswalker.toml   (and GOOGLE_CLIENT_SECRET, GITHUB_*)
+# Google/GitHub redirect URI to register: https://auth.chriswalker.dev/api/auth/callback/<provider>

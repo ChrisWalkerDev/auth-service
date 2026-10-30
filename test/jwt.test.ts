@@ -31,6 +31,16 @@ describe('JWT plugin', () => {
     expect((await call('/api/auth/token')).status).toBe(401);
   });
 
+  it('serves the JWKS as cacheable but not the token endpoint', async () => {
+    const jwks = await call('/api/auth/jwks');
+    expect(jwks.status).toBe(200);
+    expect(jwks.headers.get('cache-control')).toContain('public');
+    expect(jwks.headers.get('cache-control')).toContain('max-age=300');
+
+    const token = await call('/api/auth/token');
+    expect(token.headers.get('cache-control')).toBe('no-store');
+  });
+
   it('issues a verifiable, short-lived JWT for the session user', async () => {
     const u = await signUp();
     const res = await call('/api/auth/token', { cookie: u.cookie });

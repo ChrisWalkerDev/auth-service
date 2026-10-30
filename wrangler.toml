@@ -10,9 +10,18 @@ database_name = "auth-service-db"
 database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
 migrations_dir = "migrations"
 
+# Bundle HTML templates and CSS (src/templates) into the Worker as text modules.
+[[rules]]
+type = "Text"
+globs = ["**/*.html", "**/*.css"]
+fallthrough = true
+
 [vars]
 # Public origin of the deployed app (no trailing slash). Used as the Better Auth baseURL.
 PUBLIC_URL = "http://localhost:8787"
+# Comma-separated origins users may be sent back to after login (via /?redirect=...).
+# Supports wildcard subdomains, e.g. "https://chriswalker.dev,https://*.chriswalker.dev". Empty = this service only.
+TRUSTED_ORIGINS = ""
 # Set to "true" to make the app invite-only (no public sign-up).
 DISABLE_SIGNUP = "false"
 # Optional: the first registration with this email becomes admin if no admin exists yet.

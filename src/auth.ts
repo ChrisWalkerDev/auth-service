@@ -1,10 +1,12 @@
 import { betterAuth } from 'better-auth';
 import { jwt } from 'better-auth/plugins';
+import { parseOrigins } from './origins';
 
 export interface AuthEnv {
   DB: D1Database;
   BETTER_AUTH_SECRET: string;
   PUBLIC_URL: string;
+  TRUSTED_ORIGINS?: string;
   DISABLE_SIGNUP?: string;
   BOOTSTRAP_ADMIN_EMAIL?: string;
   GOOGLE_CLIENT_ID?: string;
@@ -23,7 +25,7 @@ export const createAuth = (env: AuthEnv) => {
     database: env.DB,
     baseURL: env.PUBLIC_URL,
     secret: env.BETTER_AUTH_SECRET,
-    trustedOrigins: [env.PUBLIC_URL],
+    trustedOrigins: [env.PUBLIC_URL, ...parseOrigins(env.TRUSTED_ORIGINS)],
     // No automatic linking: email/password emails are unverified, so linking by email could let an
     // attacker who pre-registered a victim's address keep access after the victim signs in with a provider.
     account: { accountLinking: { enabled: false } },

@@ -2,12 +2,14 @@ import { Hono } from 'hono';
 import { createAuth } from './auth';
 import { adminRoutes } from './api/admin';
 import { loadAuthz, requireAuth, requireRole } from './middleware/auth';
+import { render, scripts, styles, templates } from './templates';
+import { isTrustedRedirect, parseOrigins } from './origins';
 import type { AppEnv } from './types';
 
 const app = new Hono<AppEnv>();
 
 const CSP =
-  "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; " +
+  "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; " +
   "form-action 'self'; base-uri 'none'; frame-ancestors 'none'";
 
 app.use('*', async (c, next) => {
@@ -31,6 +33,14 @@ app.use('/api/*', async (c, next) => {
   await next();
 });
 
+// Public keys are safe to cache; this lets browsers, the edge and consumer Workers skip refetching them.
+app.use('/api/auth/jwks', async (c, next) => {
+  await next();
+  if (c.req.method === 'GET' && c.res.status === 200) {
+    c.header('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600');
+  }
+});
+
 app.on(['GET', 'POST', 'PUT', 'DELETE'], '/api/auth/*', (c) => createAuth(c.env).handler(c.req.raw));
 
 app.get('/api/me', requireAuth, async (c) => {
@@ -45,83 +55,43 @@ app.get('/api/me', requireAuth, async (c) => {
 
 app.route('/api/admin', adminRoutes());
 
-// Minimal server-checked page shells; pages themselves hold no data.
-const page = (title: string, body: string) =>
-  `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${title}</title>` +
-  `<meta name="viewport" content="width=device-width,initial-scale=1"></head><body>${body}</body></html>`;
+// HTML and CSS live in src/templates and are bundled into the Worker, so they are only reachable through these routes.
+app.get('/css/login.css', (c) => c.body(styles.login, 200, { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': 'public, max-age=3600' }));
 
-app.get('/', (c) =>
-  c.html(page('Auth Service', '<h1>Auth Service</h1><a href="/login">Log in</a>'))),
-  
-app.get('/login', (c) => {
-  // Determine available social providers from environment
-  const availableProviders = [];
-  if (c.env.GOOGLE_CLIENT_ID && c.env.GOOGLE_CLIENT_SECRET) {
-    availableProviders.push('google');
-  }
-  if (c.env.GITHUB_CLIENT_ID && c.env.GITHUB_CLIENT_SECRET) {
-    availableProviders.push('github');
-  }
+app.get('/js/login.js', (c) => c.body(scripts.login, 200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=3600' }));
+app.get('/js/dashboard.js', (c) => c.body(scripts.dashboard, 200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=3600' }));
 
-  // Generate social login buttons
-  const loginContent = availableProviders.length > 0 
-    ? `
-    <h1>Log in</h1>
-    <div class="social-login">
-      <h2>Sign in with Social Provider</h2>
-      ${availableProviders.map(provider => {
-        switch(provider) {
-          case 'google':
-            return '<a href="/api/auth/sign-in/google" class="social-button google">Continue with Google</a>';
-          case 'github':
-            return '<a href="/api/auth/sign-in/github" class="social-button github">Continue with GitHub</a>';
-          default:
-            return '';
-        }
-      }).filter(Boolean).join('\n  ')}
-    </div>
-    <style>
-      .social-button {
-        display: inline-block;
-        padding: 10px 20px;
-        margin: 10px 0;
-        border-radius: 4px;
-        text-decoration: none;
-        color: white;
-        font-weight: bold;
-        text-align: center;
-        width: 250px;
-        box-sizing: border-box;
-      }
-      .social-button.google {
-        background-color: #DB4437;
-      }
-      .social-button.github {
-        background-color: #333;
-      }
-      .social-login {
-        text-align: center;
-        margin-top: 20px;
-      }
-    </style>
-  `
-    : '<h1>Log in</h1><p>No social providers configured.</p>';
+app.get('/', (c) => {
+  const buttons: string[] = [];
+  if (c.env.GOOGLE_CLIENT_ID && c.env.GOOGLE_CLIENT_SECRET) buttons.push(templates.socialGoogle.trim());
+  if (c.env.GITHUB_CLIENT_ID && c.env.GITHUB_CLIENT_SECRET) buttons.push(templates.socialGithub.trim());
 
-  return c.html(page('Log in', loginContent));
-}),
+  const requested = c.req.query('redirect') ?? '';
+  const redirect = isTrustedRedirect(requested, c.env.PUBLIC_URL, parseOrigins(c.env.TRUSTED_ORIGINS)) ? requested : '/dashboard';
 
-app.get('/register', (c) =>
-  c.env.DISABLE_SIGNUP === 'true'
-    ? c.notFound()
-    : c.html(page('Register', '<h1>Register</h1><p>POST /api/auth/sign-up/oauth</p>')),
-);
-app.get('/dashboard', requireAuth, (c) =>
-  c.html(page('Dashboard', `<h1>Dashboard</h1><p>Signed in as ${escapeHtml(c.get('user').email)}</p>`)),
-);
-app.get('/admin', requireAuth, requireRole('admin'), (c) => c.html(page('Admin', '<h1>Admin</h1>')));
+  const content =
+    buttons.length > 0
+      ? render(templates.loginProviders, { BUTTONS: buttons.join('\n        '), REDIRECT: redirect })
+      : templates.loginNone;
+  return c.html(render(templates.login, { CONTENT: content }));
+});
 
-const escapeHtml = (s: string) =>
-  s.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch] as string);
+app.get('/login', (c) => c.redirect('/'));
+
+app.get('/dashboard', requireAuth, async (c) => {
+  const user = c.get('user');
+  const authz = await loadAuthz(c.env.DB, user.id);
+  const items = authz.permissions.map((name) => render(templates.permissionItem, { NAME: name }).trim());
+  return c.html(
+    render(templates.dashboard, {
+      EMAIL: user.email,
+      ROLE: authz.role ?? 'none',
+      PERMISSIONS: items.length > 0 ? `<ul>${items.join('')}</ul>` : '<p>none</p>',
+    }),
+  );
+});
+
+app.get('/admin', requireAuth, requireRole('admin'), (c) => c.html(templates.admin));
 
 app.notFound((c) => c.json({ error: 'Not found' }, 404));
 app.onError((err, c) => {

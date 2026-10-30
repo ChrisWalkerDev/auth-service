@@ -1,0 +1,29 @@
+.social-button {
+    display: inline-block;
+    padding: 10px 20px;
+    margin: 10px 0;
+    border-radius: 4px;
+    text-decoration: none;
+    color: white;
+    font-weight: bold;
+    text-align: center;
+    width: 250px;
+    box-sizing: border-box;
+    border: 0;
+    font-size: 1rem;
+    cursor: pointer;
+}
+.social-button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+.social-button.google {
+    background-color: #DB4437;
+}
+.social-button.github {
+    background-color: #333;
+}
+.social-login {
+    text-align: center;
+    margin-top: 20px;
+}
