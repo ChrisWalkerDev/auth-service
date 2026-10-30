@@ -91,6 +91,8 @@ app.get('/', (c) => {
   return c.html(render(templates.login, { LOGO: logo, CONTENT: content }));
 });
 
+app.get('/favicon.ico', (c) => c.body(null, 204, { 'Cache-Control': 'public, max-age=86400' }));
+
 app.get('/login', (c) => c.redirect('/'));
 
 app.get('/dashboard', requireAuth, async (c) => {
