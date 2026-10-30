@@ -10,7 +10,7 @@ routes = [{ pattern = "auth.chriswalker.dev", custom_domain = true }]
 binding = "DB"
 database_name = "auth-chriswalker-db"
 # Replace with the id printed by `npx wrangler d1 create auth-chriswalker-db`
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "3e93309e-3385-482f-bd6e-260478d69d9b"
 migrations_dir = "migrations"
 
 # Bundle HTML templates and CSS (src/templates) into the Worker as text modules.
@@ -24,7 +24,7 @@ PUBLIC_URL = "https://auth.chriswalker.dev"
 # Sites users may be sent back to after login (via /?redirect=...).
 TRUSTED_ORIGINS = "https://chriswalker.dev,https://*.chriswalker.dev"
 DISABLE_SIGNUP = "false"
-BOOTSTRAP_ADMIN_EMAIL = ""
+BOOTSTRAP_ADMIN_EMAIL = "chriswalkerdev@gmail.com"
 
 # Secrets (set per deployment, never put them here):
 #   npx wrangler secret put BETTER_AUTH_SECRET -c wrangler.chriswalker.toml
