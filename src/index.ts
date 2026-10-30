@@ -64,7 +64,6 @@ app.get('/js/dashboard.js', (c) => c.body(scripts.dashboard, 200, { 'Content-Typ
 app.get('/', (c) => {
   const buttons: string[] = [];
   if (c.env.GOOGLE_CLIENT_ID && c.env.GOOGLE_CLIENT_SECRET) buttons.push(templates.socialGoogle.trim());
-  if (c.env.GITHUB_CLIENT_ID && c.env.GITHUB_CLIENT_SECRET) buttons.push(templates.socialGithub.trim());
 
   const requested = c.req.query('redirect') ?? '';
   const redirect = isTrustedRedirect(requested, c.env.PUBLIC_URL, parseOrigins(c.env.TRUSTED_ORIGINS)) ? requested : '/dashboard';

@@ -4,7 +4,6 @@ import adminPage from './admin.html';
 import loginProviders from './partials/login-providers.html';
 import loginNone from './partials/login-none.html';
 import socialGoogle from './partials/social-google.html';
-import socialGithub from './partials/social-github.html';
 import permissionItem from './partials/permission-item.html';
 import loginCss from './css/login.css';
 
@@ -21,7 +20,6 @@ export const templates = {
   loginProviders,
   loginNone,
   socialGoogle,
-  socialGithub,
   permissionItem,
 };
 

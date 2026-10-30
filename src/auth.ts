@@ -11,8 +11,6 @@ export interface AuthEnv {
   BOOTSTRAP_ADMIN_EMAIL?: string;
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
-  GITHUB_CLIENT_ID?: string;
-  GITHUB_CLIENT_SECRET?: string;
 }
 
 // Better Auth is stateless apart from D1, so a lightweight instance is created per request
@@ -36,15 +34,6 @@ export const createAuth = (env: AuthEnv) => {
             google: {
               clientId: env.GOOGLE_CLIENT_ID,
               clientSecret: env.GOOGLE_CLIENT_SECRET,
-              disableSignUp: env.DISABLE_SIGNUP === 'true',
-            },
-          }
-        : {}),
-      ...(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET
-        ? {
-            github: {
-              clientId: env.GITHUB_CLIENT_ID,
-              clientSecret: env.GITHUB_CLIENT_SECRET,
               disableSignUp: env.DISABLE_SIGNUP === 'true',
             },
           }

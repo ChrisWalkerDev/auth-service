@@ -9,8 +9,6 @@ export const unconfigured: AuthEnv = {
   ...e,
   GOOGLE_CLIENT_ID: undefined,
   GOOGLE_CLIENT_SECRET: undefined,
-  GITHUB_CLIENT_ID: undefined,
-  GITHUB_CLIENT_SECRET: undefined,
   TRUSTED_ORIGINS: '',
 };
 

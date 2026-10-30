@@ -106,21 +106,20 @@ Set `DISABLE_SIGNUP = "true"` for invite-only mode (then create users some other
 - Queries use prepared statements with bound parameters; input validated with zod.
 - Schema: `migrations/0001_init.sql` (Better Auth `user`, `session`, `account`, `verification`, `rateLimit`, `jwks` plus RBAC tables with foreign keys and seed data).
 
-## Social sign-in: Google and GitHub (optional)
+## Social sign-in: Google (optional)
 
-Each provider is enabled only when both of its secrets are set; otherwise its endpoints return an error. Providers are independent.
+Google is enabled only when both of its secrets are set; otherwise its endpoints return an error.
 
 | Provider | Secrets | Where to create credentials | Callback URL to register |
 |---|---|---|---|
 | Google | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google Cloud Console > APIs & Services > Credentials > OAuth client (Web application) | `<PUBLIC_URL>/api/auth/callback/google` |
-| GitHub | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | GitHub > Settings > Developer settings > OAuth Apps > New OAuth App (use "Authorization callback URL") | `<PUBLIC_URL>/api/auth/callback/github` |
 
-Local callback example: `http://localhost:8787/api/auth/callback/github`. GitHub OAuth Apps allow one callback URL, so register separate apps for local and production.
+Local callback example: `http://localhost:8787/api/auth/callback/google`.
 
-1. Local: add the secrets to `.dev.vars`. Deployed: `npx wrangler secret put GITHUB_CLIENT_ID` (and the other three as needed).
-2. Start the flow from the browser: `POST /api/auth/sign-in/social` with `{"provider":"google"|"github","callbackURL":"/dashboard"}`; the response contains the provider URL (`url`) to redirect the user to. The provider then returns to `/api/auth/callback/<provider>`, which creates the session cookie.
+1. Local: add the secrets to `.dev.vars`. Deployed: `npx wrangler secret put GOOGLE_CLIENT_ID` (and `GOOGLE_CLIENT_SECRET`).
+2. Start the flow from the browser: `POST /api/auth/sign-in/social` with `{"provider":"google","callbackURL":"/dashboard"}`; the response contains the provider URL (`url`) to redirect the user to. The provider then returns to `/api/auth/callback/google`, which creates the session cookie.
 
-Behaviour: new social users get the `member` role (or `admin` if their email matches `BOOTSTRAP_ADMIN_EMAIL` and no admin exists). `DISABLE_SIGNUP=true` also blocks new social sign-ups; existing users can still sign in. Automatic account linking is disabled, so a social sign-in whose email already belongs to another account is refused rather than merged (emails are not verified on email/password accounts, and merging could hand the account to whoever pre-registered it). Tests cover the authorization URL, forged state, foreign origins and off-site redirects for both providers; the full round-trip needs real credentials and is not tested.
+Behaviour: new social users get the `member` role (or `admin` if their email matches `BOOTSTRAP_ADMIN_EMAIL` and no admin exists). `DISABLE_SIGNUP=true` also blocks new social sign-ups; existing users can still sign in. Automatic account linking is disabled, so a social sign-in whose email already belongs to another account is refused rather than merged (emails are not verified on email/password accounts, and merging could hand the account to whoever pre-registered it). Tests cover the authorization URL, forged state, foreign origins and off-site redirects for Google; the full round-trip needs real credentials and is not tested.
 
 ## Rate limiting
 

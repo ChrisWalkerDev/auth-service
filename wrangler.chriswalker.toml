@@ -28,5 +28,5 @@ BOOTSTRAP_ADMIN_EMAIL = ""
 
 # Secrets (set per deployment, never put them here):
 #   npx wrangler secret put BETTER_AUTH_SECRET -c wrangler.chriswalker.toml
-#   npx wrangler secret put GOOGLE_CLIENT_ID -c wrangler.chriswalker.toml   (and GOOGLE_CLIENT_SECRET, GITHUB_*)
-# Google/GitHub redirect URI to register: https://auth.chriswalker.dev/api/auth/callback/<provider>
+#   npx wrangler secret put GOOGLE_CLIENT_ID -c wrangler.chriswalker.toml   (and GOOGLE_CLIENT_SECRET)
+# Google redirect URI to register: https://auth.chriswalker.dev/api/auth/callback/google

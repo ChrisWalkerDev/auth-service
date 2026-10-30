@@ -8,8 +8,6 @@ const configured: AuthEnv = {
   ...base,
   GOOGLE_CLIENT_ID: 'test-google-id',
   GOOGLE_CLIENT_SECRET: 'test-google-secret',
-  GITHUB_CLIENT_ID: 'test-github-id',
-  GITHUB_CLIENT_SECRET: 'test-github-secret',
 };
 let n = 0;
 
@@ -31,7 +29,6 @@ const start = (e: AuthEnv, provider: string, origin = 'http://localhost:8787', c
 
 const providers = [
   { name: 'google', host: 'https://accounts.google.com', id: 'test-google-id', secret: 'test-google-secret' },
-  { name: 'github', host: 'https://github.com', id: 'test-github-id', secret: 'test-github-secret' },
 ];
 
 describe.each(providers)('$name sign-in', ({ name, host, id, secret }) => {
@@ -86,10 +83,11 @@ describe.each(providers)('$name sign-in', ({ name, host, id, secret }) => {
   });
 });
 
-describe('providers are independent', () => {
-  it('github works while google is unconfigured', async () => {
-    const onlyGithub: AuthEnv = { ...base, GITHUB_CLIENT_ID: 'gh', GITHUB_CLIENT_SECRET: 'ghs' };
-    expect((await start(onlyGithub, 'github')).status).toBe(200);
-    expect((await start(onlyGithub, 'google')).status).toBeGreaterThanOrEqual(400);
+describe('only google is supported', () => {
+  it('rejects github even when github secrets are present in the environment', async () => {
+    const withGithubSecrets = { ...configured, GITHUB_CLIENT_ID: 'gh', GITHUB_CLIENT_SECRET: 'ghs' } as AuthEnv;
+    const res = await start(withGithubSecrets, 'github');
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(res.status).toBeLessThan(500);
   });
 });
