@@ -30,3 +30,6 @@ BOOTSTRAP_ADMIN_EMAIL = "chriswalkerdev@gmail.com"
 #   npx wrangler secret put BETTER_AUTH_SECRET -c wrangler.chriswalker.toml
 #   npx wrangler secret put GOOGLE_CLIENT_ID -c wrangler.chriswalker.toml   (and GOOGLE_CLIENT_SECRET)
 # Google redirect URI to register: https://auth.chriswalker.dev/api/auth/callback/google
+
+[limits]
+cpu_ms = 1000
