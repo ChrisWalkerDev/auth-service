@@ -8,6 +8,7 @@ export interface AuthEnv {
   PUBLIC_URL: string;
   TRUSTED_ORIGINS?: string;
   DISABLE_SIGNUP?: string;
+  LOGO_URL?: string;
   BOOTSTRAP_ADMIN_EMAIL?: string;
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;

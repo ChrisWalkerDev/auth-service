@@ -25,6 +25,9 @@ PUBLIC_URL = "http://localhost:8787"
 TRUSTED_ORIGINS = ""
 # Set to "true" to make the app invite-only (no public sign-up).
 DISABLE_SIGNUP = "false"
+# Optional: https URL (or site-relative path) of the logo shown on the login page. Empty = built-in mark.
+# The logo's origin is added to the page's img-src Content Security Policy automatically.
+LOGO_URL = ""
 # Optional: the first registration with this email becomes admin if no admin exists yet.
 # Leave empty and use the SQL bootstrap instead if you prefer.
 BOOTSTRAP_ADMIN_EMAIL = ""

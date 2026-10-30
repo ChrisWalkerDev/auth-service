@@ -12,9 +12,21 @@ const CSP =
   "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; " +
   "form-action 'self'; base-uri 'none'; frame-ancestors 'none'";
 
+// Accepts an https URL or a site-relative path; anything else falls back to the built-in logo.
+function parseLogo(raw: string | undefined): { url: string; origin: string | null } | null {
+  const url = (raw ?? '').trim();
+  if (/^\/(?![\/\\])/.test(url)) return { url, origin: null };
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === 'https:') return { url: parsed.href, origin: parsed.origin };
+  } catch {}
+  return null;
+}
+
 app.use('*', async (c, next) => {
   await next();
-  c.header('Content-Security-Policy', CSP);
+  const logo = parseLogo(c.env.LOGO_URL);
+  c.header('Content-Security-Policy', `${CSP}; img-src 'self'${logo?.origin ? ` ${logo.origin}` : ''}`);
   c.header('X-Content-Type-Options', 'nosniff');
   c.header('X-Frame-Options', 'DENY');
   c.header('Referrer-Policy', 'no-referrer');
@@ -72,7 +84,11 @@ app.get('/', (c) => {
     buttons.length > 0
       ? render(templates.loginProviders, { BUTTONS: buttons.join('\n        '), REDIRECT: redirect })
       : templates.loginNone;
-  return c.html(render(templates.login, { CONTENT: content }));
+  const logoConfig = parseLogo(c.env.LOGO_URL);
+  const logo = logoConfig
+    ? render(templates.logoImage, { LOGO_URL: logoConfig.url }).trim()
+    : templates.logoDefault.trim();
+  return c.html(render(templates.login, { LOGO: logo, CONTENT: content }));
 });
 
 app.get('/login', (c) => c.redirect('/'));
